@@ -3,7 +3,7 @@ import json
 import os.path
 
 import hashlib
-from simhash import Simhash
+from simhash import simhash
 
 
 
@@ -32,7 +32,7 @@ for j_file in json_files:
             
             try:
                 # hash=  str(int(hashlib.sha1(function_data.encode("utf-8")).hexdigest(), 16) % (10 ** 8))
-                hash = str(Simhash(function_data).value)
+                hash = str(simhash(function_data).value)
 
 
                 if os.path.isfile(NEW_DATA_PATH + hash) is False:

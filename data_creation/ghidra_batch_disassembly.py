@@ -30,23 +30,15 @@ from subprocess import STDOUT, check_output
 
 BIN_PATH  = '/home/raisul/DATA/x86_O2_d4/'
 
-output_dir_path = '/home/raisul/ANALYSED_DATA/mlm_x86_O2_d4_updated/'
-
-
-
+output_dir_path = '/home/raisul/ANALYSED_DATA/tokenization_data/'
 
 
 
 def analyse(  binary_path ):
 
 
-
-
     binary_file_name = os.path.basename(binary_path)
     output_file_path = os.path.join(output_dir_path , binary_file_name ) 
-
-
-
 
 
     # if os.path.isfile(output_file_path): #file already analysed
@@ -56,7 +48,7 @@ def analyse(  binary_path ):
 
 
 
-    ghidra_path = '/home/raisul/re_tools/ghidra_11.1.2_PUBLIC_20240709/ghidra_11.1.2_PUBLIC/support/analyzeHeadless   '
+    ghidra_path = ' /home/raisul/re_tools/ghidra_11.1.2_PUBLIC_20240709/ghidra_11.1.2_PUBLIC/support/analyzeHeadless   '
     ghidra_proj_path = '/media/raisul/nahid_personal/dwarf4/ghidra_types/temp_proj/{}'.format(binary_file_name)
     ghidra_process = "  ghidraBenchmarking_MainProcess  "
     bin_path = "-import {} -overwrite  ".format(binary_path) 
@@ -86,8 +78,8 @@ def analyse(  binary_path ):
 
 
 filtered_files = [join(BIN_PATH, f) for f in listdir(BIN_PATH) if isfile(join(BIN_PATH, f))]
-random.shuffle(filtered_files)
-filtered_files = filtered_files [0:10]
+# random.shuffle(filtered_files)
+# filtered_files = filtered_files [0:2]
 
 
 

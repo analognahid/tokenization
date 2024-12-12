@@ -8,6 +8,12 @@ import __main__ as ghidra_app
 import json , collections
 from collections import OrderedDict
 
+from ghidra.program.model.data import Pointer, StructureDataType
+import re
+
+import hashlib
+# from ghidra.program.model.listing import OperandType
+from ghidra.program.model.lang import OperandType
 
 
 def unoverflow(x):
@@ -18,6 +24,36 @@ def to_hex(integer):
     return '{:02x}'.format(integer)
 
 import re
+
+
+
+def convert(typename):
+
+    if 'undefined' in typename:
+        return "None"
+    
+    valids = [ 'uint','ulong','uchar','ushort','ulonglong','longlong','schar','int' , 'char', 'float', 'long', 'double', 'short', 'bool', 'void']
+    for tk in valids:
+        if tk in typename:
+
+            if len(typename)< len(tk)+3:#structs can have tk in their name.
+            
+                if '[' in typename:
+                    return "array "+tk
+                elif '*' in typename:
+                    return '*'+tk
+                elif typename == tk:
+                        return tk
+            
+    if "*" in typename:
+        return "*struct"
+
+    
+    return "None"
+
+
+
+
 
 def replace_hex_with_decimal(input_string):
     # Regular expression to find hexadecimal numbers prefixed with "0x" or "0X"
@@ -52,26 +88,72 @@ def _get_instructions(func):
     # Process each instruction
     for inst in insts:
         
+
         if ghidra_app.getFunctionContaining(inst.getAddress()) != func:
             break
 
-        instructions.append([ (int( inst.getAddress().subtract(0).toString(),16)) , inst.toString()]) 
+        # print('\n')
+        # print(inst)
 
-    if len(instructions)<5:
+        op_addr = None
+        op_scalar = None
+        for opi in range(inst.numOperands):
+            operandType = inst.getOperandType(opi)
+            address = inst.getAddress(opi)
+            if address and str(address) in inst.toString():
+                op_addr =str(address)
+                # print("address >" ,address)
+            
+            scalar = inst.getScalar(opi)
+            if scalar  and str(scalar) in inst.toString():
+                op_scalar = str(scalar)
+                # print("scalar: >" , scalar)
+
+
+            # if operandType & OperandType.IMMEDIATE:
+            #     scalar = inst.getScalar(opi)
+            #     print(scalar)
+
+
+        instructions.append([ (int( inst.getAddress().subtract(0).toString(),16)) , inst.toString(),op_addr ,op_scalar ]) 
+
+    if len(instructions)<10:
         return None
+    
     instructions = sorted(instructions, key=lambda x: x[0], reverse=False) 
 
     fun_str = ""
-    for addr,inst_str in instructions:
-        fun_str+=  str(addr)+"|" + replace_hex_with_decimal(inst_str) +"\n"#replace_hex_with_decimal
+    fun_opaddr = []
+    fun_scalar = []
+    for addr,inst_str, opaddr, opscalar in instructions:
+        fun_str+=  (inst_str) +"\n"
+        fun_opaddr.append(opaddr)
+        fun_scalar.append(opscalar)
 
-    return fun_str
+    return fun_str , fun_opaddr , fun_scalar
 
 
 
 def getAddress(program, offset):
     return program.getAddressFactory().getDefaultAddressSpace().getAddress(offset)
 
+
+
+
+
+def extract_function_parameters(func):
+    parameters = func.getParameters()
+    param_list = []
+
+
+    # return
+    for param in parameters:
+
+        param_type = convert(param.getDataType().getName())
+        param_list.append(param_type)
+
+
+    return param_list
 
 
 def disassemble(program):
@@ -84,17 +166,39 @@ def disassemble(program):
 
 
     disasm_result = []
+    param_list = []
+    signature_list = []
+    return_type_list = []
+    opadd_list = []
+    opscalar_list = []
 
+    
     funcs = program.getListing().getFunctions(True)
     for func in funcs:
-        
-        disassembled_function = _get_instructions(func)
-        if disassembled_function != None:
-            disasm_result.append(disassembled_function)
-        else:
-            continue 
 
-    return disasm_result
+        
+        return_type = func.getReturnType().getName()
+        return_type_list.append(return_type)
+
+        rdata = _get_instructions(func)
+        if rdata:
+            disassembled_function, fun_opaddr , fun_scalar  = rdata
+
+
+            if disassembled_function != None:
+                disasm_result.append(disassembled_function)
+                param_list.append(extract_function_parameters(func))
+                signature_list.append(func.getSignature())
+
+                opadd_list.append(fun_opaddr)
+                opscalar_list.append(fun_scalar)
+
+
+                
+            else:
+                continue 
+
+    return disasm_result, param_list , return_type_list , signature_list ,opadd_list , opscalar_list
 
 from ghidra.program.model.address import Address
 def run():
@@ -105,32 +209,30 @@ def run():
     start_file_offset = 0  
     ghidra_app.currentProgram.setImageBase(ghidra_app.getCurrentProgram().getAddressFactory().getDefaultAddressSpace().getAddress(start_file_offset), True)
 
-    function_disassembly_list = disassemble(ghidra_app.currentProgram)
+    function_disassembly_list, params_list ,returns_list , signature_list ,opadd_list , opscalar_list= disassemble(ghidra_app.currentProgram)
     # disassembled = sorted(disassembled, key=lambda x: x[0], reverse=False)
+    # print(signature_list , '\n', params_list , returns_list)
+
+
+        
 
 
     exeName = ghidra_app.currentProgram.getName()
     exeLocation = ghidra_app.currentProgram.getExecutablePath()
-
-
-    
     print("DBG base: " , ghidra_app.currentProgram.getImageBase())
-    
-    # disassembled_dict = OrderedDict()
-    # for key, value in disassembled:
 
+    data_arr = []
+    for x in range(len(function_disassembly_list)):
+        #signature_list[x].arguments.tolist()
+        # print( params_list[x] , convert(signature_list[x].getReturnType().getName() ), "  > " ) # dir(signature_list[x] )
         
-    #     inst_file_offset = ghidra_app.currentProgram.getMemory().getAddressSourceInfo(value.getAddress()).getFileOffset() 
+        data_arr.append( [function_disassembly_list[x], params_list[x]  , convert(signature_list[x].getReturnType().getName() ) ,  signature_list[x].toString() ,opadd_list[x] , opscalar_list[x]])
+        # hash = Simhash(function_disassembly_list[x])
+        # print(hash)
 
-    #     if int(key)!= int(inst_file_offset):
-    #         print("FILE offset ERROR !" , hex(key) , hex(inst_file_offset))
-    #         return
-    #     disassembled_dict[ hex(key)  ] = value.toString()
-
-    # print("DBG:  disassembled_dict", disassembled_dict)
     output = output_path + '.disassembly.json'
     with open(output, 'w') as fw:
-        json.dump(function_disassembly_list, fw, indent=2)
+        json.dump(data_arr, fw, indent=2)
         print('[*] success. save to -> {}'.format(output ))
     
 # Starts execution here
