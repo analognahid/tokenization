@@ -7,28 +7,29 @@ from simhash import Simhash
 
 from num2words import num2words
 from transformers import AutoTokenizer
-
-import difflib
-
-
-tokenizer = AutoTokenizer.from_pretrained("./../models/bert_pretokenizer_trained")
-special_tokens = {"additional_special_tokens": ["\n" , ' ']}
-tokenizer.add_special_tokens(special_tokens)
+import matplotlib.pyplot as plt
+import difflib, pickle
 
 
-def replace_random_tokens(insructions):
-    lst = insructions.copy()
-    # Calculate the number of items to replace
-    num_to_replace = int(len(lst) * 0.15)
+
+# tokenizer = AutoTokenizer.from_pretrained("./../models/bert_pretokenizer_trained")
+# special_tokens = {"additional_special_tokens": ["\n" , ' ']}
+# tokenizer.add_special_tokens(special_tokens)
+
+
+# def replace_random_tokens(insructions):
+#     lst = insructions.copy()
+#     # Calculate the number of items to replace
+#     num_to_replace = int(len(lst) * 0.15)
     
-    # Get random indices to replace
-    indices_to_replace = random.sample(range(len(lst)), num_to_replace)
+#     # Get random indices to replace
+#     indices_to_replace = random.sample(range(len(lst)), num_to_replace)
     
-    # Replace items at the selected indices
-    for idx in indices_to_replace:
-        lst[idx] = '[mask]'
+#     # Replace items at the selected indices
+#     for idx in indices_to_replace:
+#         lst[idx] = '[mask]'
     
-    return lst
+#     return lst
 
 
 
@@ -62,11 +63,12 @@ NEW_DATA_PATH = "/home/raisul/ANALYSED_DATA/tokenization_data_single_functions/"
 SUB_FOLDER = ''
 json_files = sorted( [os.path.join(DATA_PATH, f) for f in os.listdir(DATA_PATH) ] )
 
-json_files =json_files [0:100]
+# json_files =json_files [0:100]
 
 
 
 counter = 0
+instruction_count_list=[]
 
 for i,j_file in enumerate( json_files):
 
@@ -86,6 +88,11 @@ for i,j_file in enumerate( json_files):
 
 
             if counter>=100000:
+
+                with open("instruction_count_list.pkl", "wb") as file:  # 'wb' means write in binary mode
+                    pickle.dump(instruction_count_list, file)
+
+                
                 exit()
             
             output = {}
@@ -95,8 +102,8 @@ for i,j_file in enumerate( json_files):
 
             instruction_count = len(disassembly.split('\n'))
 
-            if  instruction_count>12 and instruction_count<55 :
-                
+            if  instruction_count>=30 and instruction_count<=100 :
+                instruction_count_list.append(instruction_count)
                 disassembly_decimal = replace_hex_with_decimal(disassembly)
 
                 #num to words all
@@ -128,39 +135,33 @@ for i,j_file in enumerate( json_files):
                 # print(disassembly_addr_to_decimal)
                 # break
                 # disassembly_decimal_tokens,disassembly_num_to_words_tokens, disassembly_addr_to_num_tokens =  tokenizer.tokenize([disassembly_decimal , disassembly_num_to_words, disassembly_addr_to_num ])
-                disassembly_decimal_tokens = tokenizer.tokenize(disassembly_decimal)
-                masked_disassembly_decimal_tokens = replace_random_tokens(disassembly_decimal_tokens)
+                # disassembly_decimal_tokens = tokenizer.tokenize(disassembly_decimal)
+                # masked_disassembly_decimal_tokens = replace_random_tokens(disassembly_decimal_tokens)
 
-                disassembly_num_to_words_tokens = tokenizer.tokenize(disassembly_num_to_words)
-                masked_disassembly_num_to_words_tokens  = replace_random_tokens(disassembly_num_to_words_tokens)
+                # disassembly_num_to_words_tokens = tokenizer.tokenize(disassembly_num_to_words)
+                # masked_disassembly_num_to_words_tokens  = replace_random_tokens(disassembly_num_to_words_tokens)
 
-                disassembly_addr_to_num_tokens =   tokenizer.tokenize(disassembly_addr_to_num)
-                masked_disassembly_addr_to_num_tokens =replace_random_tokens(disassembly_addr_to_num_tokens)
+                # disassembly_addr_to_num_tokens =   tokenizer.tokenize(disassembly_addr_to_num)
+                # masked_disassembly_addr_to_num_tokens =replace_random_tokens(disassembly_addr_to_num_tokens)
 
 
-                if tokenizer.convert_tokens_to_string(disassembly_decimal_tokens) != disassembly_decimal :
+                # if tokenizer.convert_tokens_to_string(disassembly_decimal_tokens) != disassembly_decimal :
 
-                    print("\n\nNOT EQUAL")
+                #     print("\n\nNOT EQUAL")
                     
-                    print(disassembly_decimal )
-                    print(tokenizer.convert_tokens_to_string(disassembly_decimal_tokens))
+                #     print(disassembly_decimal )
+                #     print(tokenizer.convert_tokens_to_string(disassembly_decimal_tokens))
 
                 output = {
                     'disassembly_original': disassembly,
                     'disassembly_decimal':{
                         'input':disassembly_decimal,
-                        'tokens':disassembly_decimal_tokens,
-                        'masked_input': masked_disassembly_decimal_tokens
                                            },
                     'disassembly_all_number_to_words':{
                         'input':disassembly_num_to_words,
-                        'tokens': disassembly_num_to_words_tokens,
-                        'masked_input': masked_disassembly_num_to_words_tokens
                         },
                     'disassembly_addresses_to_words' : {
                         'input':disassembly_addr_to_num,
-                        'tokens':disassembly_addr_to_num_tokens,
-                        'masked_input': masked_disassembly_addr_to_num_tokens
                         },
 
                     'signature':{
@@ -187,7 +188,7 @@ for i,j_file in enumerate( json_files):
 
                     newfilepath = NEW_DATA_PATH + SUB_FOLDER+ hash+'.json'
 
-                    if True:#os.path.isfile(newfilepath) is False:
+                    if os.path.isfile(newfilepath) is False:
                         with open(newfilepath, 'w') as fw:
                             json.dump(output, fw, indent=2)
                             counter = counter + 1 
@@ -197,3 +198,5 @@ for i,j_file in enumerate( json_files):
 
                 except Exception as e:
                     print(e)    
+
+
