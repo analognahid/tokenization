@@ -14,11 +14,11 @@ import difflib, pickle
 
 
 def plotHoistogram(numbers):
-    plt.figure(figsize=(15, 6))
+    plt.figure(figsize=(6, 6))
     plt.hist(numbers, bins=14, edgecolor='black', color='skyblue')
 
     # Add titles and labels
-    plt.title('Frequency Distribution of Input Sizes', fontsize=16)
+    # plt.title('Frequency Distribution of Input Sizes', fontsize=16)
     plt.xlabel('Instruction Count', fontsize=13)
     plt.ylabel('Frequency', fontsize=14)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
